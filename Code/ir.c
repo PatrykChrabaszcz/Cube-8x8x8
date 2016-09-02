@@ -2,19 +2,18 @@
  * ir.c
  *
  *  Created on: Jun 7, 2013
- *      Author: Tomasz
+ *  Author: Tomasz
  */
 
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
-
 #include "ir.h"
 
 volatile uint8_t address;		// Address RC5
 volatile uint8_t command;		// Command RC5
-volatile uint8_t toggle_bit;		// Bot TOGGLE
+volatile uint8_t toggle_bit;		// Bit TOGGLE
 
 volatile uint8_t Ir_key_press_flag;
 

@@ -1,3 +1,10 @@
+/*
+ * ir.h
+ *
+ *  Created on: Jun 7, 2013
+ *  Author: Tomasz
+ */
+
 #ifndef IR_H_
 #define IR_H_
 

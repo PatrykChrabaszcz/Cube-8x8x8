@@ -1,197 +1,142 @@
 /*
  * menu.c
  *
- *  Created on: 2013-05-17
- *      Author: Tomasz
+ *  Created on: Jun 7, 2013
+ *  Author: Tomasz
  */
 
-#include <avr/io.h>
-#include <util/delay.h>
 #include <avr/pgmspace.h>
-
+#include <stdlib.h>
 #include "menu.h"
 #include "lcd.h"
-
-
-const char T00[] PROGMEM  = {"**      MENU      **"};
-const char T01[] PROGMEM  = {"   1. SNAKE GAME"};
-const char T01E[] PROGMEM  = {"-> 1. SNAKE GAME"};
-const char T02[] PROGMEM  = {"   2. VISUALISATIONS"};
-const char T03[] PROGMEM  = {"   3. CREDITS"};
-
-const char T10[] PROGMEM  = {"**   SANKE GAME   **"};
-const char T11[] PROGMEM  = {"   1. PLAY GAME"};
-const char T12[] PROGMEM  = {"   2. SETTINGS"};
-const char T13[] PROGMEM  = {"   3. HIGHSCORES"};
-
-const char T20[] PROGMEM  = {"** VISUALISATIONS **"};
-const char T21[] PROGMEM  = {"   1. V1"};
-const char T22[] PROGMEM  = {"   2. V2"};
-const char T23[] PROGMEM  = {"   3. V3"};
-
-const char T30[] PROGMEM  = {"**     CREDITS    **"};
-const char T31[] PROGMEM  = {"MALENDA M."};
-const char T32[] PROGMEM  = {"CHRABASZCZ P."};
-const char T33[] PROGMEM  = {"LAWRYNOWICZ R."};
-const char T34[] PROGMEM  = {"GASIOR T."};
-const char T3X[] PROGMEM  = {"################"};
-
-const char T120[] PROGMEM  = {"**   SETTINGS    **"};
-const char T121[] PROGMEM  = {"   1.  EASY        "};
-const char T122[] PROGMEM  = {"   2.  MEDIUM      "};
-const char T123[] PROGMEM  = {"   3.  HARD        "};
-const char T124[] PROGMEM  = {"   4.  INSANE      "};
-
-const char T130[] PROGMEM  = {"**   HIGHSCORES   **"};
-const char T131[] PROGMEM  = {"   1.  0           "};
-const char T132[] PROGMEM  = {"   2.  0           "};
-const char T133[] PROGMEM  = {"   3.  0           "};
-
-const char empty[] PROGMEM  = {"                    "};
-const char arrow[] PROGMEM  = {"->"};
-const char kratki[] PROGMEM = {"##"};
-const char puste_kratki[] PROGMEM = {"  "};
-
-volatile unsigned char current_menu = 0;
-volatile unsigned char menu_event = E_IDDLE;
-
-
-void change_led(void)
+#include "usart.h"
+#include "snake.h"
+//-----------------------------------------------------------------------
+//Initialization
+currentMenu = &main;
+menuEvent = E_IDLE;
+mSpeedGame = MEDIUM_SPEED;
+//-----------------------------------------------------------------------
+//text of menus
+const prog_char mainText =		"MENU";
+const prog_char menu1Text =		"Snake Game";
+const prog_char menu11Text =		"Play Game";
+const prog_char menu12Text =		"Level";
+const prog_char menu121Text =		"Easy";
+const prog_char menu122Text =		"Medium";
+const prog_char menu123Text =		"Hard";
+const prog_char menu124Text =		"Insane";
+const prog_char menu13Text =		"Highscores";
+const prog_char menu2Text =		"Visualization";
+const prog_char menu21Text = 		"Enable USART";
+const prog_char menu3Text = 		"Credits";
+const prog_char Empty = 		"                    ";
+const prog_char Line = 			"=====================";
+const prog_char Arrow = 		"->";
+//-----------------------------------------------------------------------
+//generate the links in menu
+main = { mainText, { &menu1, &menu2, &menu3 }, 3, 0, NULL, NULL };
+	menu1 = { menu1Text, { &menu11, &menu12, &menu13 }, 3, 0, &main, NULL };
+		menu11 = { menu11Text, { NULL }, 0, 0, &menu1, menuPlayGame };
+		menu12 = { menu12Text, { &menu121, &menu122, &menu123, &menu124 }, 4, 0, &menu1, NULL };
+			menu121 = { menu121Text, { NULL }, 0, 0, &menu12, menuSetEasy };
+			menu122 = { menu122Text, { NULL }, 0, 0, &menu12, menuSetMedium };
+			menu123 = { menu123Text, { NULL }, 0, 0, &menu12, menuSetHard };
+			menu124 = { menu124Text, { NULL }, 0, 0, &menu12, menuSetInsane };
+		menu13 = { menu13Text, { NULL }, 0, 0, &menu1, menuHighscores };
+	menu2 = { menu2Text, { &menu21 }, 1, 0, &main, NULL };
+		menu21 = { menu21Text, { NULL }, 0, 0, &menu2, menuEnableUsart };
+	menu3 = { menu3Text, { NULL }, 0, 0, &main, menuCredits };
+//-----------------------------------------------------------------------
+void menuPlayGame(void)
 {
-	PORTD ^= (1<<PD7);
+	usartOff();
+	snakeGame( mSpeedGame );
+	menuBackTo( &main );
+	changeMenu();
 }
-void snake_game(void)
+void menuSetEasy(void)  { mSpeedGame = EASY_SPEED; menuEvent = E_BACK; changeMenu(); }
+void menuSetMedium(void) { mSpeedGame = MEDIUM_SPEED; menuEvent = E_BACK; changeMenu(); }
+void menuSetHard(void) { mSpeedGame = HARD_SPEED; menuEvent = E_BACK; changeMenu(); }
+void menuSetInsane(void) { mSpeedGame = INSANE_SPEED; menuEvent = E_BACK; changeMenu(); }
+void menuHighscores(void)
 {
-	lcd_cls();
-	lcd_locate(1,5);
-	lcd_str_P("SNAKE GAME ...");
+	strGoTo(0,0);
+	lcdStr("=====HIGHSCORES=====");
+	strGoTo(1,1);
+	lcdStr("1. "); lcdStr(bestPlayer1);
+	strGoTo(2,1);
+	lcdStr("2. "); lcdStr(bestPlayer2);
+	strGoTo(3,1);
+	lcdStr("3. "); lcdStr(bestPlayer3);
 }
-void credits_display(void)
+void menuEnableUsart(void) { usartOn(); menuEvent = E_BACK; changeMenu(); }
+void menuCredits(void)
 {
-	lcd_cls();
-	for(uint8_t i=1; i<18; i++)
+
+}
+//-----------------------------------------------------------------------
+void changeMenu()
+{
+    switch (menuEvent)
+    {
+        case E_UP:      menuUp(currentMenu); break;
+        case E_DOWN:    menuDown(currentMenu); break;
+        case E_ENTER:   menuEnter(currentMenu); break;
+        case E_BACK:    menuBack(currentMenu); break;
+    }
+    drawMenu();
+    if(currentMenu->callback)
+        currentMenu->callback();
+    menuEvent = E_IDLE;
+}
+//-----------------------------------------------------------------------
+void drawMenu()
+{
+	for (uint8_t i = 0; i < LCD_Y; i++)
+		lcdBuff[i] = Empty;
+	char buff[2];
+
+	lcdBuff[0] = Line;
+	strPut(lcdBuff[0], currentMenu->text, (uint8_t)(LCD_X-strlen(currentMenu->text))/2);
+
+	// Write first line of submenu to lcd buffer
+	if(currentMenu->currentSubmenu > 0)
 	{
-		_delay_ms(300);
-		if (i==1)
-		{
-			lcd_locate(4-i,3);
-			lcd_str_P(T31);
-		}
-		else if(i>1 && i<5)
-		{
-			lcd_locate(5-i,3);
-			lcd_str_P(empty);
-			lcd_locate(4-i,3);
-			lcd_str_P(T31);
-		}
-		else if (i==5)
-		{
-			lcd_locate(5-i,3);
-			lcd_str_P(empty);
-			lcd_locate(8-i,3);
-			lcd_str_P(T32);
-		}
-		else if(i>5 && i<9)
-		{
-			lcd_locate(9-i,3);
-			lcd_str_P(empty);
-			lcd_locate(8-i,3);
-			lcd_str_P(T32);
-		}
-		else if (i==9)
-		{
-			lcd_locate(9-i,3);
-			lcd_str_P(empty);
-			lcd_locate(12-i,3);
-			lcd_str_P(T33);
-		}
-		else if(i>9 && i<13)
-		{
-			lcd_locate(13-i,3);
-			lcd_str_P(empty);
-			lcd_locate(12-i,3);
-			lcd_str_P(T33);
-		}
-		else if (i==13)
-		{
-			lcd_locate(13-i,3);
-			lcd_str_P(empty);
-			lcd_locate(16-i,3);
-			lcd_str_P(T34);
-		}
-		else if(i>13 && i<17)
-		{
-			lcd_locate(17-i,3);
-			lcd_str_P(empty);
-			lcd_locate(16-i,3);
-			lcd_str_P(T34);
-		}
+		strPut(lcdBuff[1], itoa(currentMenu->currentSubmenu-1, buff, 10), 3);
+		strPut(lcdBuff[1], ". ", 4+(uint8_t)(currentMenu->submenuSize/10));
+		strPut(lcdBuff[1], currentMenu->submenu[currentMenu->currentSubmenu-1], 6+(uint8_t)(currentMenu->submenuSize/10));
 	}
-	lcd_cls();
-	menu_event = E_BACK;
-}
-typedef struct {
-	char state[5];
-	void (*callback)(void);
-	const char *first_line;
-	const char *second_line;
-	const char *third_line;
-	const char *forth_line;
-} menu_item;
-
-const menu_item MENU [] ={
-	// Main Menu
-	{{0,0,1,3,0}, 0, T00, empty, T01E, T02},
-	{{1,0,2,6,1}, 0, T00, T01, T02, T03},
-	{{2,1,2,9,2}, 0, T00, T02, T03, empty},
-	// Snake Game Menu
-	{{3,3,4,10,0}, 0, T10, empty, T11, T12},
-	{{4,3,5,11,0}, 0, T10, T11, T12, T13},
-	{{5,4,5,15,0}, 0, T10, T12, T13, empty},
-	// Visualization Menu
-	{{6,6,7,6,1}, 0/*V1 funkcja*/, T20, empty, T21, T22},
-	{{7,6,8,7,1}, 0/*V2 funkcja*/, T20, T21, T22, T23},
-	{{8,7,8,8,1}, 0/*V3 funkcja*/, T20, T22, T23, empty},
-	// Credits Menu
-	{{9,0,0,0,2}, credits_display, 0,0,0,0},
-	// Play Game - Snake Game Menu
-	{{10,10,10,10,3}, snake_game, 0,0,0,0},
-	// Settings - Snake Game Menu
-	{{11,11,12,11,4}, 0, T120, empty, T121, T122},
-	{{12,11,13,12,4}, 0, T120, T121, T122, T123},
-	{{13,12,14,13,4}, 0, T120, T122, T123, T124},
-	{{14,13,14,14,4}, 0, T120, T123, T124, empty},
-	// HighScores - Snake Game Menu
-	{{15,15,16,15,5}, 0, T130, empty, T131, T132},
-	{{16,15,17,16,5}, 0, T130, T131, T132, T133},
-	{{17,16,17,17,5}, 0, T130, T132, T133, empty},
-
-};
-
-void change_menu(void)
-{
-	current_menu = MENU[current_menu].state[menu_event];
-	lcd_cls();
-	lcd_locate(0,0);
-	lcd_str_P((const char*)MENU[current_menu].first_line);
-	lcd_locate(1,0);
-	lcd_str_P((const char*)MENU[current_menu].second_line);
-	lcd_locate(2,0);
-	lcd_str_P((const char*)MENU[current_menu].third_line);
-	lcd_locate(3,0);
-	lcd_str_P((const char*)MENU[current_menu].forth_line);
-	lcd_locate(2,0);
-	lcd_str_P(arrow);
-
-	if (MENU[current_menu].callback)
+	// Write second line of submenu to lcd buffer (current submenu)
+	strPut(lcdBuff[2], itoa(currentMenu->currentSubmenu, buff, 10), 3);
+	strPut(lcdBuff[2], ". ", 4+(uint8_t)(currentMenu->submenuSize/10));
+	strPut(lcdBuff[2], currentMenu->submenu[currentMenu->currentSubmenu], 6+(uint8_t)(currentMenu->submenuSize/10));
+	// Write third line of submenu to lcd buffer
+	if(currentMenu->currentSubmenu < currentMenu->submenuSize)
 	{
-		MENU[current_menu].callback();
+		strPut(lcdBuff[3], itoa(currentMenu->currentSubmenu+1, buff, 10), 3);
+		strPut(lcdBuff[3], ". ", 4+(uint8_t)(currentMenu->submenuSize/10));
+		strPut(lcdBuff[3], currentMenu->submenu[currentMenu->currentSubmenu+1], 6+(uint8_t)(currentMenu->submenuSize/10));
 	}
-	menu_event = E_IDDLE;
+	// Write arrow on current submenu to lcd buffer
+	strPut(lcdBuff[2], Arrow, 0);
+
+	// Draw lcd buffer on lcd
+	for (uint8_t i = 0; i < LCD_Y; i++)
+	{
+		lcdGoTo(i,0);
+		lcdStrPgm(lcdBuff[i]);
+	}
 }
-
-
-
-
-
-
+//-----------------------------------------------------------------------
+char * strPut(char * strTo, const char * strFrom, uint8_t pos)
+{
+	uint8_t strToLen = strlen(strTo);
+	if (pos < strToLen)
+	{
+		for (uint8_t i = pos; (i < strToLen) && (strFrom[i-pos] != '\0'); i++)
+			strTo[i] = strFrom[i-pos];
+	}
+	return strTo;
+}
+//-----------------------------------------------------------------------

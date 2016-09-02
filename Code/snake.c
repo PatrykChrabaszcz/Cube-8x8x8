@@ -1,15 +1,56 @@
 /*
  * snake.c
  *
- *  Created on: Jun 5, 2013
- *      Author: Patryk Chrabaszcz
+ *  Created on: Jul 21, 2013
+ *  Author: Patryk Chrabaszcz
  */
 
+#include <stdlib.h>
 #include "snake.h"
+#include "lcd.h"
 
-int snakeSize = 1;
+uint16_t snakeSize = 1; //Start game - size=1
 
-void startGame()
+// Game loop and initialization
+int snakeGame(uint16_t gameSpeed) // Game Speed is a time delay between moves
+{
+	speed= gameSpeed;
+	startGame();
+	score=0;
+
+	while(1)
+	{
+		if(lastKey != NONE_KEY && lastKey != START_KEY) // Start key ends the game
+			lastDirection=lastKey;
+
+		moveSnake(lastDirection);
+
+		// Checks if game is over
+		if(isCrush())
+			return score;
+
+		updateCube(); // Paint snake and food on the Cube
+
+		// Repeat to get better keys readings, could be done using interrupts but it's not
+		for(int i=0;i<4;i++)
+		{
+			delayMs(speed/4);
+			lastKey=getKey();
+
+			if(lastKey != NONE_KEY && lastKey != START_KEY)
+				lastDirection=lastKey;
+		}
+
+
+		if(lastKey==START_KEY) // Start key ends the game
+		{
+			return score;
+		}
+	}
+	return score;
+}
+
+void startGame() 
 {
 	CUBE_OFF;
 
@@ -22,25 +63,37 @@ void startGame()
 	snakeSize = 1;
 }
 
-//Updates food randomly
+//Display random food
 void setFood()
 {
 	food[X] = rand() % 8;
 	food[Y] = rand() % 8;
 	food[Z] = rand() % 8;
 
+	//Dispay score on LCD
+	score = (snakeSize-1)*(((EASY_SPEED-speed)+100)/100);
+	lcdCls();
+	lcdGoTo(1,0);
+	lcdStr("SCORE: ");
+	lcdGoTo(1,7);
+	char buff[5];
+	lcdStr( itoa(score, buff, 10) );
+
 }
-//Updates snake table which must be updated into Cube matrix
-void moveSnake(int direction)
+
+// Updates snake table, this have to be updated into Cube matrix
+void moveSnake(uint8_t direction)
 {
-	//Moving snake table and making space for new head
+	if (direction == SELECT_KEY) return;
+
+	// Moving snake table and making space for new head
 	for (int i = 0; i < snakeSize; i++)
 	{
 		snake[snakeSize-i][X] = snake[snakeSize-i-1][X];
 		snake[snakeSize-i][Y] = snake[snakeSize-i-1][Y];
 		snake[snakeSize-i][Z] = snake[snakeSize-i-1][Z];
 	}
-	//Making new head which depends on actual direction, if direction is not recognized then PAUSE GAME
+	// Making new head which depends on actual direction, if direction is not recognized then PAUSE GAME
 	switch (direction)
 	{
 		case UP_KEY:
@@ -90,7 +143,7 @@ void moveSnake(int direction)
 
 	}
 
-	//Check if snake is eating(if True then snake grows and new food appears on board)
+	// Check if snake is eating(if True then snake grows and new food appears on board)
 	if(	(snake[0][X]==food[X])&&
 		(snake[0][Y]==food[Y])&&
 		(snake[0][Z]==food[Z]) )
@@ -98,62 +151,37 @@ void moveSnake(int direction)
 		snakeSize++;
 		setFood();
 	}
-
-
 }
-//Updates Cube matrix by snake table
+// Updates Cube matrix by snake table
 void updateCube()
 {
-	//Clear Cube
+	// Clear the Cube
 	CUBE_OFF;
-	foodBlink++;
-	//Set on snake body
+
+
+	// Set snake body leds ON
 	for(int i=0;i<snakeSize;i++)
 	{
 		setLedOn(snake[i][X],snake[i][Y],snake[i][Z]);
 	}
-		if(foodBlink%2)
-			setLedOn(food[X],food[Y],food[Z]);
 
-		else
-			setLedOff(food[X],food[Y],food[Z]);
+	// Food blinking
+	foodBlink++;
+	if(foodBlink%2)
+		setLedOn(food[X],food[Y],food[Z]);
+	else
+		setLedOff(food[X],food[Y],food[Z]);
 }
-
-
-
-int snakeGame(int gameSpeed)
+// Checks if there is a crush
+int isCrush()
 {
-	speed= gameSpeed;
-	startGame();
-
-	while(1)
+	for(int i=0;i<snakeSize-1;i++)
 	{
-
-		if(lastKey!=NONE_KEY)
-			lastDirection=lastKey;
-
-		moveSnake(lastDirection);
-		updateCube();
-
-		// Repeat rutine to get better keys reading
-		for(int i=0;i<4;i++)
-		{
-			delayMs(speed/4);
-			lastKey=getKey();
-
-			if(lastKey!=NONE_KEY)
-				lastDirection=lastKey;
-		}
-
-		if(lastKey==SELECT_KEY)
-		{
-			// To do: Saving hi-Scores
-			return 0;
-		}
+		for(int j=i+1;j<snakeSize;j++)
+			if(snake[i][X]==snake[j][X] &&
+			   snake[i][Y]==snake[j][Y] &&
+			   snake[i][Z]==snake[j][Z])
+				return 1;
 	}
+	return 0;
 }
-
-
-
-
-
