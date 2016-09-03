@@ -9,9 +9,9 @@ Additionaly there was an USART mode which made it possible to pass control over 
 
 Two applications developed for the Cube can be found under those links:
 
-TO DO: Analyzer
+https://github.com/PatrykChrabaszcz/LedCube-SpectrumAnalyzer
 
-TO DO: Painter
+https://github.com/PatrykChrabaszcz/LedCube-Painter
 
 
 ![alt tag](https://github.com/PatrykChrabaszcz/Cube-8x8x8/blob/master/Pictures/0.jpg)
